@@ -15,6 +15,8 @@ class Scheduler:
         self.block_manager = BlockManager(config.num_kvcache_blocks, config.kvcache_block_size)
         self.waiting: deque[Sequence] = deque()
         self.running: deque[Sequence] = deque()
+        self.max_consecutive_prefills = config.max_consecutive_prefills
+        self.consecutive_prefills = 0
 
     def is_finished(self):
         return not self.waiting and not self.running
@@ -27,7 +29,13 @@ class Scheduler:
         num_batched_tokens = 0
 
         # prefill
-        while self.waiting and len(scheduled_seqs) < self.max_num_seqs:
+        force_decode = (
+            bool(self.running)
+            and self.max_consecutive_prefills > 0
+            and self.consecutive_prefills >= self.max_consecutive_prefills
+            and any(self.block_manager.can_append(seq) for seq in self.running)
+        )
+        while self.waiting and len(scheduled_seqs) < self.max_num_seqs and not force_decode:
             seq = self.waiting[0]
             remaining = self.max_num_batched_tokens - num_batched_tokens
             if remaining == 0:
@@ -52,6 +60,8 @@ class Scheduler:
             scheduled_seqs.append(seq)
 
         if scheduled_seqs:
+            if self.max_consecutive_prefills > 0:
+                self.consecutive_prefills += 1
             return scheduled_seqs, True
 
         # decode
@@ -70,6 +80,7 @@ class Scheduler:
                 scheduled_seqs.append(seq)
         assert scheduled_seqs
         self.running.extendleft(reversed(scheduled_seqs))
+        self.consecutive_prefills = 0
         return scheduled_seqs, False
 
     def preempt(self, seq: Sequence):
