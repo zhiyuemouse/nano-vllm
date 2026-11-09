@@ -1,0 +1,308 @@
+{
+  "metadata": {
+    "started_at": "2026-11-07T18:52:51+08:00",
+    "policy_limit": 0,
+    "warmup": 2,
+    "repeats": 5,
+    "seed": 42,
+    "arrival_mode": "time",
+    "git_commit": "7416282193b4c2772bff01bb8cc978de98ed7618",
+    "git_dirty": true,
+    "gpu_name": "NVIDIA GeForce RTX 3050 Ti Laptop GPU",
+    "versions": {
+      "torch": "2.7.1+cu126",
+      "transformers": "4.56.2",
+      "triton": "3.3.1",
+      "flash-attn": "2.8.3",
+      "xxhash": "3.5.0"
+    },
+    "model_path": "/mnt/d/桌面/知跃起号/Project_Infra实习推理优化方向/MiniLLM-Engine/models/Qwen3-0.6B",
+    "prompt_token_ids": {
+      "A": [
+        151644,
+        872,
+        198,
+        108386,
+        101037,
+        151645,
+        198,
+        151644,
+        77091,
+        198,
+        151667,
+        271,
+        151668,
+        271
+      ],
+      "B": [
+        151644,
+        872,
+        198,
+        16,
+        10,
+        16,
+        107106,
+        99195,
+        11319,
+        151645,
+        198,
+        151644,
+        77091,
+        198,
+        151667,
+        271,
+        151668,
+        271
+      ],
+      "C": [
+        151644,
+        872,
+        198,
+        11622,
+        105321,
+        100157,
+        68990,
+        1773,
+        151645,
+        198,
+        151644,
+        77091,
+        198,
+        151667,
+        271,
+        151668,
+        271
+      ]
+    },
+    "llm_config": {
+      "enforce_eager": true,
+      "tensor_parallel_size": 1,
+      "max_num_seqs": 2,
+      "max_model_len": 128,
+      "max_num_batched_tokens": 128,
+      "gpu_memory_utilization": 0.7,
+      "max_consecutive_prefills": 0
+    },
+    "sampling_config": {
+      "temperature": 0.6,
+      "max_tokens": 4,
+      "ignore_eos": true
+    },
+    "code_identity": {
+      "algorithm": "sha256",
+      "files": {
+        "experiments/benchmark_scheduler_policy.py": "5d289f9d3db7b33894e5e9734cb8d728d6ee1f5474d4b7fe758a8cd3194693ae",
+        "nanovllm/__init__.py": "42996c92a5c18d1e333eb57c7d670b2eac53b132df81d53cc6286a89125c9d77",
+        "nanovllm/config.py": "f2b1d96498b87b19c251d9edf64240b7eabc6d7e2e805964c9eb8650aaa084ed",
+        "nanovllm/engine/block_manager.py": "d0240374f589eaa85c4c7923b8970f2635ab7bc73adc5044fa2d273955b54242",
+        "nanovllm/engine/llm_engine.py": "c8132cd9f5e66faeea51d0ed6a64d7f4fd8ec5a5823dc2505c2aee51ba049aa1",
+        "nanovllm/engine/model_runner.py": "2373c9daad7de3956905c9a0ec9d6b2e0a8d355a209162de8570507c5f419fd7",
+        "nanovllm/engine/scheduler.py": "d4c5072db8b22207cafb75a9355a1023c554d2b059f9d3e8d2f1874bf016c99a",
+        "nanovllm/engine/sequence.py": "d5bb5c522d22554b5c36de745150ec8b601827ee0388058404dcceef1ae8290d",
+        "nanovllm/layers/activation.py": "9dca7e6fae963ecb9d9d582b539d1c18e47825e103dac8c04058d6def8924c64",
+        "nanovllm/layers/attention.py": "00c2f52cd428bc2f82ff90ef8cbc96b0959a225daaeb035e9e0eaf63a85bfbba",
+        "nanovllm/layers/embed_head.py": "e823fbd0a1eb9d64a90e93ade7d32f32235f0039bafc97d367d92a8ee06b3d0f",
+        "nanovllm/layers/layernorm.py": "a661fc4eeef736f29308c736da7d91cbc9d896d662c990a3f887dc6f6c8d7169",
+        "nanovllm/layers/linear.py": "9fe0d9917e15603d4af435591ba8b4c5f45b253ee1a825607061ca73d50470cf",
+        "nanovllm/layers/rotary_embedding.py": "82b59b6a5d32e3465c4c9207e690a7e9b5c38219357f1920fa05ff81f7ae3836",
+        "nanovllm/layers/sampler.py": "63a342a4ec02e846d5872d2906dc25ef5af1b7d66b85a63a6a88668f23543050",
+        "nanovllm/llm.py": "ffe74fe7f64ba5169471a17596757b8d8f309e75f4db7040ac41b84db2e38179",
+        "nanovllm/models/qwen3.py": "6156b3477117094f657a6f609df3c051393a23cce1405af6b88dafddb49acd29",
+        "nanovllm/sampling_params.py": "1e5146d1a06f5230ab049df1ea24814a1d73ba52c3ad22af04bd0f1c6293e0c0",
+        "nanovllm/utils/context.py": "83a608397c38cf22216dabba9e73b41cf985cf64c7a7f35c5c14e223fcd09959",
+        "nanovllm/utils/loader.py": "29d4b6c38a8356ad31f8858b1a14e893d7703cd3d5e32f86b0dc9ab3fb866e99"
+      }
+    },
+    "arrival_plan_ms": [
+      [
+        0,
+        "A"
+      ],
+      [
+        10,
+        "B"
+      ],
+      [
+        50,
+        "C"
+      ]
+    ]
+  },
+  "trials": [
+    {
+      "A": {
+        "planned_offset_ms": 0.0,
+        "submitted_offset_ms": 0.0039430015021935105,
+        "submission_delay_ms": 0.0039430015021935105,
+        "ttft_ms": 32.11857600035728,
+        "itls_ms": [
+          94.63913000035973,
+          30.25155899922538,
+          32.039227000495885
+        ]
+      },
+      "B": {
+        "planned_offset_ms": 10.000000000218279,
+        "submitted_offset_ms": 32.1273490008025,
+        "submission_delay_ms": 22.127349000584218,
+        "ttft_ms": 54.96262800079421,
+        "itls_ms": [
+          61.79507799970452,
+          30.25155899922538,
+          32.039227000495885
+        ]
+      },
+      "C": {
+        "planned_offset_ms": 49.999999999272404,
+        "submitted_offset_ms": 64.9723870010348,
+        "submission_delay_ms": 14.9723870017624,
+        "ttft_ms": 46.955724001236376,
+        "itls_ms": [
+          120.27297600070597,
+          27.92993699949875,
+          27.670896000927314
+        ]
+      }
+    },
+    {
+      "A": {
+        "planned_offset_ms": 0.0,
+        "submitted_offset_ms": 0.004830000762012787,
+        "submission_delay_ms": 0.004830000762012787,
+        "ttft_ms": 37.98921500128927,
+        "itls_ms": [
+          95.57919199869502,
+          30.34668000145757,
+          30.682409000291955
+        ]
+      },
+      "B": {
+        "planned_offset_ms": 10.000000000218279,
+        "submitted_offset_ms": 37.99956400143856,
+        "submission_delay_ms": 27.99956400122028,
+        "ttft_ms": 61.149578001277405,
+        "itls_ms": [
+          62.41882899848861,
+          30.34668000145757,
+          30.682409000291955
+        ]
+      },
+      "C": {
+        "planned_offset_ms": 49.999999999272404,
+        "submitted_offset_ms": 71.15904100101034,
+        "submission_delay_ms": 21.159041001737933,
+        "ttft_ms": 53.52591500195558,
+        "itls_ms": [
+          119.82566400001815,
+          27.397165998991113,
+          28.0857770012517
+        ]
+      }
+    },
+    {
+      "A": {
+        "planned_offset_ms": 0.0,
+        "submitted_offset_ms": 0.003942999683204107,
+        "submission_delay_ms": 0.003942999683204107,
+        "ttft_ms": 34.36597399922903,
+        "itls_ms": [
+          98.42027900049288,
+          30.903008999302983,
+          31.79861799981154
+        ]
+      },
+      "B": {
+        "planned_offset_ms": 10.000000000218279,
+        "submitted_offset_ms": 34.375338998870575,
+        "submission_delay_ms": 24.375338998652296,
+        "ttft_ms": 56.831516998499865,
+        "itls_ms": [
+          65.95473600100377,
+          30.903008999302983,
+          31.79861799981154
+        ]
+      },
+      "C": {
+        "planned_offset_ms": 49.999999999272404,
+        "submitted_offset_ms": 66.8428529988887,
+        "submission_delay_ms": 16.842852999616298,
+        "ttft_ms": 52.400835000298684,
+        "itls_ms": [
+          121.05276299917023,
+          27.865375001056236,
+          28.201498000271386
+        ]
+      }
+    },
+    {
+      "A": {
+        "planned_offset_ms": 0.0,
+        "submitted_offset_ms": 0.0040409995563095436,
+        "submission_delay_ms": 0.0040409995563095436,
+        "ttft_ms": 34.40136099925439,
+        "itls_ms": [
+          96.04986500016821,
+          30.80769200096256,
+          30.137907999232993
+        ]
+      },
+      "B": {
+        "planned_offset_ms": 10.000000000218279,
+        "submitted_offset_ms": 34.411414999340195,
+        "submission_delay_ms": 24.411414999121916,
+        "ttft_ms": 56.77996499980509,
+        "itls_ms": [
+          63.67126099939924,
+          30.80769200096256,
+          30.137907999232993
+        ]
+      },
+      "C": {
+        "planned_offset_ms": 49.999999999272404,
+        "submitted_offset_ms": 66.78942799953802,
+        "submission_delay_ms": 16.789428000265616,
+        "ttft_ms": 49.61632800041116,
+        "itls_ms": [
+          119.95203100013896,
+          27.303131000735448,
+          26.94699699895864
+        ]
+      }
+    },
+    {
+      "A": {
+        "planned_offset_ms": 0.0,
+        "submitted_offset_ms": 0.0042380015656817704,
+        "submission_delay_ms": 0.0042380015656817704,
+        "ttft_ms": 34.238818001540494,
+        "itls_ms": [
+          95.47401899908436,
+          31.88644300098531,
+          36.6791189990181
+        ]
+      },
+      "B": {
+        "planned_offset_ms": 10.000000000218279,
+        "submitted_offset_ms": 34.2487739999342,
+        "submission_delay_ms": 24.248773999715922,
+        "ttft_ms": 56.779472000926035,
+        "itls_ms": [
+          62.933364999480546,
+          31.88644300098531,
+          36.6791189990181
+        ]
+      },
+      "C": {
+        "planned_offset_ms": 49.999999999272404,
+        "submitted_offset_ms": 66.7886390001513,
+        "submission_delay_ms": 16.788639000878902,
+        "ttft_ms": 49.234566002269275,
+        "itls_ms": [
+          128.07055999837758,
+          27.935261001402978,
+          27.771240000220132
+        ]
+      }
+    }
+  ]
+}

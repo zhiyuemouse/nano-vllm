@@ -1,0 +1,308 @@
+{
+  "metadata": {
+    "started_at": "2026-11-07T18:56:48+08:00",
+    "policy_limit": 2,
+    "warmup": 2,
+    "repeats": 5,
+    "seed": 42,
+    "arrival_mode": "time",
+    "git_commit": "7416282193b4c2772bff01bb8cc978de98ed7618",
+    "git_dirty": true,
+    "gpu_name": "NVIDIA GeForce RTX 3050 Ti Laptop GPU",
+    "versions": {
+      "torch": "2.7.1+cu126",
+      "transformers": "4.56.2",
+      "triton": "3.3.1",
+      "flash-attn": "2.8.3",
+      "xxhash": "3.5.0"
+    },
+    "model_path": "/mnt/d/桌面/知跃起号/Project_Infra实习推理优化方向/MiniLLM-Engine/models/Qwen3-0.6B",
+    "prompt_token_ids": {
+      "A": [
+        151644,
+        872,
+        198,
+        108386,
+        101037,
+        151645,
+        198,
+        151644,
+        77091,
+        198,
+        151667,
+        271,
+        151668,
+        271
+      ],
+      "B": [
+        151644,
+        872,
+        198,
+        16,
+        10,
+        16,
+        107106,
+        99195,
+        11319,
+        151645,
+        198,
+        151644,
+        77091,
+        198,
+        151667,
+        271,
+        151668,
+        271
+      ],
+      "C": [
+        151644,
+        872,
+        198,
+        11622,
+        105321,
+        100157,
+        68990,
+        1773,
+        151645,
+        198,
+        151644,
+        77091,
+        198,
+        151667,
+        271,
+        151668,
+        271
+      ]
+    },
+    "llm_config": {
+      "enforce_eager": true,
+      "tensor_parallel_size": 1,
+      "max_num_seqs": 2,
+      "max_model_len": 128,
+      "max_num_batched_tokens": 128,
+      "gpu_memory_utilization": 0.7,
+      "max_consecutive_prefills": 2
+    },
+    "sampling_config": {
+      "temperature": 0.6,
+      "max_tokens": 4,
+      "ignore_eos": true
+    },
+    "code_identity": {
+      "algorithm": "sha256",
+      "files": {
+        "experiments/benchmark_scheduler_policy.py": "08bffc0ed5465215b127891a0b1bc117d12ae964cbdcaebaa93f8da981031af9",
+        "nanovllm/__init__.py": "42996c92a5c18d1e333eb57c7d670b2eac53b132df81d53cc6286a89125c9d77",
+        "nanovllm/config.py": "f2b1d96498b87b19c251d9edf64240b7eabc6d7e2e805964c9eb8650aaa084ed",
+        "nanovllm/engine/block_manager.py": "d0240374f589eaa85c4c7923b8970f2635ab7bc73adc5044fa2d273955b54242",
+        "nanovllm/engine/llm_engine.py": "c8132cd9f5e66faeea51d0ed6a64d7f4fd8ec5a5823dc2505c2aee51ba049aa1",
+        "nanovllm/engine/model_runner.py": "2373c9daad7de3956905c9a0ec9d6b2e0a8d355a209162de8570507c5f419fd7",
+        "nanovllm/engine/scheduler.py": "d4c5072db8b22207cafb75a9355a1023c554d2b059f9d3e8d2f1874bf016c99a",
+        "nanovllm/engine/sequence.py": "d5bb5c522d22554b5c36de745150ec8b601827ee0388058404dcceef1ae8290d",
+        "nanovllm/layers/activation.py": "9dca7e6fae963ecb9d9d582b539d1c18e47825e103dac8c04058d6def8924c64",
+        "nanovllm/layers/attention.py": "00c2f52cd428bc2f82ff90ef8cbc96b0959a225daaeb035e9e0eaf63a85bfbba",
+        "nanovllm/layers/embed_head.py": "e823fbd0a1eb9d64a90e93ade7d32f32235f0039bafc97d367d92a8ee06b3d0f",
+        "nanovllm/layers/layernorm.py": "a661fc4eeef736f29308c736da7d91cbc9d896d662c990a3f887dc6f6c8d7169",
+        "nanovllm/layers/linear.py": "9fe0d9917e15603d4af435591ba8b4c5f45b253ee1a825607061ca73d50470cf",
+        "nanovllm/layers/rotary_embedding.py": "82b59b6a5d32e3465c4c9207e690a7e9b5c38219357f1920fa05ff81f7ae3836",
+        "nanovllm/layers/sampler.py": "63a342a4ec02e846d5872d2906dc25ef5af1b7d66b85a63a6a88668f23543050",
+        "nanovllm/llm.py": "ffe74fe7f64ba5169471a17596757b8d8f309e75f4db7040ac41b84db2e38179",
+        "nanovllm/models/qwen3.py": "6156b3477117094f657a6f609df3c051393a23cce1405af6b88dafddb49acd29",
+        "nanovllm/sampling_params.py": "1e5146d1a06f5230ab049df1ea24814a1d73ba52c3ad22af04bd0f1c6293e0c0",
+        "nanovllm/utils/context.py": "83a608397c38cf22216dabba9e73b41cf985cf64c7a7f35c5c14e223fcd09959",
+        "nanovllm/utils/loader.py": "29d4b6c38a8356ad31f8858b1a14e893d7703cd3d5e32f86b0dc9ab3fb866e99"
+      }
+    },
+    "arrival_plan_ms": [
+      [
+        0,
+        "A"
+      ],
+      [
+        10,
+        "B"
+      ],
+      [
+        50,
+        "C"
+      ]
+    ]
+  },
+  "trials": [
+    {
+      "A": {
+        "planned_offset_ms": 0.0,
+        "submitted_offset_ms": 0.004901998181594536,
+        "submission_delay_ms": 0.004901998181594536,
+        "ttft_ms": 34.99177000048803,
+        "itls_ms": [
+          64.81662000078359,
+          65.71540199729498,
+          32.97993900196161
+        ]
+      },
+      "B": {
+        "planned_offset_ms": 9.99999999839929,
+        "submitted_offset_ms": 35.00147299928358,
+        "submission_delay_ms": 25.00147300088429,
+        "ttft_ms": 58.803070001886226,
+        "itls_ms": [
+          31.005320000986103,
+          65.71540199729498,
+          32.97993900196161
+        ]
+      },
+      "C": {
+        "planned_offset_ms": 49.999999999272404,
+        "submitted_offset_ms": 68.8122729989118,
+        "submission_delay_ms": 18.81227299963939,
+        "ttft_ms": 83.93038700160105,
+        "itls_ms": [
+          94.59195499948692,
+          29.484243001206778,
+          28.40820599885774
+        ]
+      }
+    },
+    {
+      "A": {
+        "planned_offset_ms": 0.0,
+        "submitted_offset_ms": 0.004702000296674669,
+        "submission_delay_ms": 0.004702000296674669,
+        "ttft_ms": 34.59544599900255,
+        "itls_ms": [
+          65.07610100015881,
+          66.30298600066453,
+          31.23609199974453
+        ]
+      },
+      "B": {
+        "planned_offset_ms": 9.99999999839929,
+        "submitted_offset_ms": 34.605348999320995,
+        "submission_delay_ms": 24.605349000921706,
+        "ttft_ms": 58.42565100101638,
+        "itls_ms": [
+          31.2458959997457,
+          66.30298600066453,
+          31.23609199974453
+        ]
+      },
+      "C": {
+        "planned_offset_ms": 49.999999999272404,
+        "submitted_offset_ms": 68.43455399939558,
+        "submission_delay_ms": 18.43455400012317,
+        "ttft_ms": 84.46735500183422,
+        "itls_ms": [
+          92.2002049992443,
+          28.82713700091699,
+          28.296370997850318
+        ]
+      }
+    },
+    {
+      "A": {
+        "planned_offset_ms": 0.0,
+        "submitted_offset_ms": 0.004100998921785504,
+        "submission_delay_ms": 0.004100998921785504,
+        "ttft_ms": 33.586728997761384,
+        "itls_ms": [
+          65.25545800104737,
+          65.52274099885835,
+          30.751040001632646
+        ]
+      },
+      "B": {
+        "planned_offset_ms": 9.99999999839929,
+        "submitted_offset_ms": 33.595231998333475,
+        "submission_delay_ms": 23.595231999934185,
+        "ttft_ms": 57.726432001800276,
+        "itls_ms": [
+          31.11575499860919,
+          65.52274099885835,
+          30.751040001632646
+        ]
+      },
+      "C": {
+        "planned_offset_ms": 49.999999999272404,
+        "submitted_offset_ms": 67.7357349995873,
+        "submission_delay_ms": 17.73573500031489,
+        "ttft_ms": 82.58856599786668,
+        "itls_ms": [
+          91.12886900038575,
+          28.79822800241527,
+          28.11931500036735
+        ]
+      }
+    },
+    {
+      "A": {
+        "planned_offset_ms": 0.0,
+        "submitted_offset_ms": 0.004100998921785504,
+        "submission_delay_ms": 0.004100998921785504,
+        "ttft_ms": 34.087285999703454,
+        "itls_ms": [
+          65.63227600054233,
+          67.80935799906729,
+          31.678130999353016
+        ]
+      },
+      "B": {
+        "planned_offset_ms": 9.99999999839929,
+        "submitted_offset_ms": 34.09658899909118,
+        "submission_delay_ms": 24.096589000691893,
+        "ttft_ms": 57.72753199926228,
+        "itls_ms": [
+          31.992030002584215,
+          67.80935799906729,
+          31.678130999353016
+        ]
+      },
+      "C": {
+        "planned_offset_ms": 49.999999999272404,
+        "submitted_offset_ms": 67.7370349985722,
+        "submission_delay_ms": 17.737034999299794,
+        "ttft_ms": 84.09713899891358,
+        "itls_ms": [
+          94.129809000151,
+          28.87155200005509,
+          28.865649001090787
+        ]
+      }
+    },
+    {
+      "A": {
+        "planned_offset_ms": 0.0,
+        "submitted_offset_ms": 0.004301000444684178,
+        "submission_delay_ms": 0.004301000444684178,
+        "ttft_ms": 34.634158000699244,
+        "itls_ms": [
+          66.0325009994267,
+          64.6993830014253,
+          32.39025399670936
+        ]
+      },
+      "B": {
+        "planned_offset_ms": 9.99999999839929,
+        "submitted_offset_ms": 34.64416099814116,
+        "submission_delay_ms": 24.64416099974187,
+        "ttft_ms": 59.11536799976602,
+        "itls_ms": [
+          31.551291001960635,
+          64.6993830014253,
+          32.39025399670936
+        ]
+      },
+      "C": {
+        "planned_offset_ms": 49.999999999272404,
+        "submitted_offset_ms": 69.12477099831449,
+        "submission_delay_ms": 19.124770999042084,
+        "ttft_ms": 84.06552900123643,
+        "itls_ms": [
+          92.46798899766873,
+          28.330682001978857,
+          28.898358999867924
+        ]
+      }
+    }
+  ]
+}

@@ -3,6 +3,7 @@ import statistics
 from pathlib import Path
 import math
 import copy
+import argparse
 
 def summarize_trials(trials: list[dict]) -> dict:
     """
@@ -83,6 +84,29 @@ def test_summarize_trials():
 
 def validate_comparison(payload_0: dict, payload_2: dict) -> None:
     """配置不符合本次对照约定时，抛出 ValueError。"""
+    if "code_identity" in payload_0["metadata"] and "code_identity" in payload_2["metadata"]:
+        if payload_0["metadata"]["code_identity"]["algorithm"] != payload_2["metadata"]["code_identity"]["algorithm"]: raise ValueError("两次policy的算法不一样")
+        if payload_0["metadata"]["code_identity"]["files"] != payload_2["metadata"]["code_identity"]["files"]:
+            all_keys = sorted(payload_0["metadata"]["code_identity"]["files"].keys() | payload_2["metadata"]["code_identity"]["files"].keys())
+            for key in all_keys:
+                if key not in payload_0["metadata"]["code_identity"]["files"].keys(): raise ValueError(f"payload_0 的 code_identity 缺少 {key} 文件")
+                elif key not in payload_2["metadata"]["code_identity"]["files"].keys(): raise ValueError(f"payload_2 的 code_identity 缺少 {key} 文件")
+                elif payload_0["metadata"]["code_identity"]["files"][key] != payload_2["metadata"]["code_identity"]["files"][key]: raise ValueError(f"code_identity 中 {key} 文件不同")
+
+    elif "code_identity" in payload_0["metadata"] or "code_identity" in payload_2["metadata"]:
+        if "code_identity" not in payload_0["metadata"]: raise ValueError("policy 0 缺少摘要")
+        if "code_identity" not in payload_2["metadata"]: raise ValueError("policy 2 缺少摘要")
+    else:
+        print("缺少源码摘要，无法核对源码内容")
+
+    if "arrival_plan_ms" in payload_0["metadata"] and "arrival_plan_ms" in payload_2["metadata"]:
+        if payload_0["metadata"]["arrival_plan_ms"] != payload_2["metadata"]["arrival_plan_ms"]: raise ValueError("arrival_plan_ms 不一致")
+    elif "arrival_plan_ms" in payload_0["metadata"] or "arrival_plan_ms" in payload_2["metadata"]:
+        if "arrival_plan_ms" not in payload_0["metadata"]: raise ValueError("policy 0 缺少到达计划")
+        if "arrival_plan_ms" not in payload_2["metadata"]: raise ValueError("policy 2 缺少到达计划")
+    else:
+        print("缺少到达计划，无法核对请求到达计划")
+
     if payload_0["metadata"]['policy_limit'] != 0: raise ValueError("metadata.policy_limit 不匹配")
     if payload_2["metadata"]['policy_limit'] != 2: raise ValueError("metadata.policy_limit 不匹配")
     if payload_0["metadata"]['llm_config']['max_consecutive_prefills'] != payload_0["metadata"]['policy_limit']: raise ValueError("llm_config.max_consecutive_prefills 与上述值不一致")
@@ -123,32 +147,80 @@ def validate_comparison(payload_0: dict, payload_2: dict) -> None:
                 for value in [metrics["ttft_ms"], *metrics["itls_ms"]]:
                     if not (math.isfinite(value) and value >= 0): raise ValueError("不满足 math.isfinite(value) and value >= 0")
 
+from copy import deepcopy
 
-def compare_scheduler_policies():
-    output_dir = Path(__file__).resolve().parent
-    with (output_dir / "results" / "policy_0_run1.json").open("r", encoding="utf-8") as f:
+
+def test_validate_code_identity(payload_0: dict, payload_2: dict) -> None:
+    path = "nanovllm/config.py"
+    good_0 = copy.deepcopy(payload_0)
+    good_2 = copy.deepcopy(payload_2)
+
+    identity = {
+        "algorithm": "sha256",
+        "files": {path: "a" * 64},
+    }
+    good_0["metadata"]["code_identity"] = deepcopy(identity)
+    good_2["metadata"]["code_identity"] = deepcopy(identity)
+
+    # 两份摘要一致，校验应通过。
+    validate_comparison(good_0, good_2)
+
+    # 同一路径的摘要不同，报错应包含文件路径。
+    changed_2 = deepcopy(good_2)
+    changed_2["metadata"]["code_identity"]["files"][path] = "b" * 64
+    try:
+        validate_comparison(good_0, changed_2)
+    except ValueError as exc:
+        assert path in str(exc), f"报错没有指出文件路径：{exc}"
+    else:
+        raise AssertionError("摘要不同时应抛出 ValueError")
+
+    # 只有 policy 2 缺少摘要，报错应指出是哪一份。
+    missing_2 = deepcopy(good_2)
+    del missing_2["metadata"]["code_identity"]
+    try:
+        validate_comparison(good_0, missing_2)
+    except ValueError as exc:
+        assert "policy 2 缺少摘要" in str(exc), f"收到意外报错：{exc}"
+    else:
+        raise AssertionError("只有一份缺少摘要时应抛出 ValueError")
+
+    print("test_validate_code_identity PASS")
+
+
+def compare_scheduler_policies(policy_0_path: Path, policy_2_path: Path, self_test: bool) -> None:
+    with (policy_0_path).open("r", encoding="utf-8") as f:
         policy_0 = json.load(f)
-    with (output_dir / "results" / "policy_2_run1.json").open("r", encoding="utf-8") as f:
+    with (policy_2_path).open("r", encoding="utf-8") as f:
         policy_2 = json.load(f)
 
-    validate_comparison(policy_0, policy_2)
-    policy_0_bad = copy.deepcopy(policy_0)
-    policy_0_bad["metadata"]["seed"] = 89
-    try:
-        validate_comparison(policy_0_bad, policy_2)
-    except ValueError:
-        pass
+    if self_test:
+        test_validate_code_identity(policy_0, policy_2)
+        policy_0_bad = copy.deepcopy(policy_0)
+        policy_0_bad["metadata"]["seed"] = 89
+        try:
+            validate_comparison(policy_0_bad, policy_2)
+        except ValueError:
+            pass
+        else:
+            raise AssertionError("未抛出对应错误")
     else:
-        raise AssertionError("未抛出对应错误")
-
-    policy_0_output = summarize_trials(policy_0["trials"])
-    policy_2_output = summarize_trials(policy_2["trials"])
-    for c in ["A", "B", "C"]:
-        for metric in ["ttft_median_ms", "itl1_median_ms", "itl2_median_ms", "itl3_median_ms", "request_latency_median_ms"]:
-            print(f"请求:{c} | 指标:{metric} | 参数0中位数:{policy_0_output[c][metric]:.2f} | ",
-                  f"参数2中位数:{policy_2_output[c][metric]:.2f} | ",
-                  f"变化率:{(policy_2_output[c][metric] - policy_0_output[c][metric]) / policy_0_output[c][metric] * 100:.2f}")
+        validate_comparison(policy_0, policy_2)
+        policy_0_output = summarize_trials(policy_0["trials"])
+        policy_2_output = summarize_trials(policy_2["trials"])
+        for c in ["A", "B", "C"]:
+            for metric in ["ttft_median_ms", "itl1_median_ms", "itl2_median_ms", "itl3_median_ms", "request_latency_median_ms"]:
+                print(f"请求:{c} | 指标:{metric} | 参数0中位数:{policy_0_output[c][metric]:.2f} ms | ",
+                    f"参数2中位数:{policy_2_output[c][metric]:.2f} ms | ",
+                    f"变化率:{(policy_2_output[c][metric] - policy_0_output[c][metric]) / policy_0_output[c][metric] * 100:.2f} %")
 
 if __name__ == "__main__":
-    test_summarize_trials()
-    compare_scheduler_policies()
+    parser = argparse.ArgumentParser()
+    default_results_dir = Path(__file__).resolve().parent / "results"
+    parser.add_argument("--policy-0", type=Path, help="路径到 policy 0 的 JSON 文件", default=Path(default_results_dir / "policy_0_run8.json"))
+    parser.add_argument("--policy-2", type=Path, help="路径到 policy 2 的 JSON 文件", default=Path(default_results_dir / "policy_2_run8.json"))
+    parser.add_argument("--self-test", action="store_true", help="运行自测试")
+    args = parser.parse_args()
+    if args.self_test:
+        test_summarize_trials()
+    compare_scheduler_policies(args.policy_0, args.policy_2, args.self_test)
