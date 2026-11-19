@@ -29,6 +29,12 @@
 
 [运行与复现说明](experiments/README.md) · [结果分析与原始数据](experiments/results/README.md)
 
+## Triton 残差加法与 RMSNorm 融合实验
+
+本 fork 在 Qwen3 的注意力后归一化路径中接入了 Triton，将残差加法与 RMSNorm 融合。实验开关默认关闭。启用后，符合设备、形状和连续布局要求的 BF16 CUDA 张量走融合路径，其余输入走原有 RMSNorm 路径。
+
+在所测的五种形状上，独立融合算子均测得加速。在 Qwen3-0.6B 的整模型实验中，eager decode 未观察到收益。启用 CUDA Graph 后，批大小为 1 和 2 的 decode forward 耗时与基线相差约 0.1–0.3%，基本持平。[正确性验证与性能复现](experiments/README.md#triton-post-attention-rmsnorm) · [配套算子仓库 MiniLLM-Kernels](https://github.com/zhiyuemouse/MiniLLM-Kernels)
+
 ## 上游项目说明
 
 A lightweight vLLM implementation built from scratch.
@@ -83,12 +89,6 @@ See `bench.py` for benchmark.
 | vLLM           | 133,966     | 98.37    | 1361.84               |
 | Nano-vLLM      | 133,966     | 93.41    | 1434.13               |
 
-
-## Experimental Triton RMSNorm in this fork
-
-This fork adds an opt-in Triton kernel for Qwen3's post-attention residual addition and RMSNorm. The path is disabled by default. Eligible contiguous BF16 CUDA tensors use the fused implementation when enabled. Other inputs use the existing RMSNorm implementation.
-
-On Qwen3-0.6B, the standalone operator was faster at all five tested shapes. End-to-end eager decode showed no improvement, and CUDA Graph decode forward differed by about 0.1–0.3% for batch sizes 1 and 2. See the [validation and benchmark commands](experiments/README.md#triton-post-attention-rmsnorm) and the companion [MiniLLM-Kernels repository](https://github.com/zhiyuemouse/MiniLLM-Kernels).
 
 ## Star History
 
