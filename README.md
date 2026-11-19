@@ -84,6 +84,12 @@ See `bench.py` for benchmark.
 | Nano-vLLM      | 133,966     | 93.41    | 1434.13               |
 
 
+## Experimental Triton RMSNorm in this fork
+
+This fork adds an opt-in Triton kernel for Qwen3's post-attention residual addition and RMSNorm. The path is disabled by default. Eligible contiguous BF16 CUDA tensors use the fused implementation when enabled. Other inputs use the existing RMSNorm implementation.
+
+On Qwen3-0.6B, the standalone operator was faster at all five tested shapes. End-to-end eager decode showed no improvement, and CUDA Graph decode forward differed by about 0.1–0.3% for batch sizes 1 and 2. See the [validation and benchmark commands](experiments/README.md#triton-post-attention-rmsnorm) and the companion [MiniLLM-Kernels repository](https://github.com/zhiyuemouse/MiniLLM-Kernels).
+
 ## Star History
 
 [![Star History Chart](https://api.star-history.com/svg?repos=GeeeekExplorer/nano-vllm&type=Date)](https://www.star-history.com/#GeeeekExplorer/nano-vllm&Date)

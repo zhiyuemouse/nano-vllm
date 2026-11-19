@@ -268,3 +268,56 @@ CPU 测试中的调度与状态断言通过。
 - 尚未全面验证抢占、前缀共享、多卡和各种缓存耗尽场景。
 - GPU 检查使用 eager 模式，未验证 CUDA Graph 模式。
 - 当前请求按调度轮次到达，尚未模拟按实际时间到达的负载。
+
+## Triton post-attention RMSNorm
+
+实验开关 `use_triton_post_attn_norm=True` 只替换 Qwen3 decoder 的 post-attention residual add + RMSNorm。Triton 路径返回归一化输出和更新后的 residual。输入为同一 CUDA 设备上的连续 BF16 张量且通过形状检查时使用 Triton，其余情况走原实现。开关默认关闭。
+
+### 独立算子计时
+
+从 fork 根目录在 CUDA、PyTorch 和 Triton 环境下运行。脚本比较归一化输出和 residual，并交替测量 baseline 与 Triton。
+
+```bash
+python experiments/benchmark_post_attn_rmsnorm.py
+```
+
+### 跨 KV block 正确性
+
+下面假设模型位于外层 Engine 仓库的 `models/Qwen3-0.6B`。两组用同一个 prompt 填满首个 KV block，并用 baseline 的 top-1 作为下一次 decode 的输入。脚本检查 scheduler 分配的槽位，并比较采样前的 logits 和 top-1。
+
+```bash
+model_path=../../models/Qwen3-0.6B
+mkdir -p experiments/output
+
+python experiments/compare_rmsnorm_logits.py --model-path "$model_path" \
+  --cuda-graph --output-path experiments/output/rmsnorm_graph_reference.pt
+python experiments/compare_rmsnorm_logits.py --model-path "$model_path" \
+  --cuda-graph --run-triton --output-path experiments/output/rmsnorm_graph_reference.pt
+```
+
+在所测的 eager 和 CUDA Graph 跨块用例中，两组的 prefill 和 decode top-1 一致。要复现 eager 对照，两条命令都去掉 `--cuda-graph`，并使用另一份参考文件。
+
+### 整模型 A/B
+
+固定请求与调度配置，按调度步提交三个短请求。结果 JSON 包含请求 TTFT、ITL 和按阶段及行数标记的 forward 样本。
+
+```bash
+common=(--model-path "$model_path" --max-consecutive-prefills 0
+        --arrival-mode step --cuda-graph --measure-forward)
+
+python experiments/benchmark_scheduler_policy.py "${common[@]}" \
+  --output experiments/output/rmsnorm_graph_baseline.json
+python experiments/benchmark_scheduler_policy.py "${common[@]}" \
+  --use-triton-post-attn-norm \
+  --output experiments/output/rmsnorm_graph_triton.json
+```
+
+反序复测时先运行 Triton 组，再运行 baseline 组，并使用新的输出文件名。测量 eager 时，两组都去掉 `--cuda-graph`。
+
+| 测量范围 | 实测结果 |
+| --- | --- |
+| 独立 BF16 算子 | `1/2/14/17/18 × 1024` 五种形状的配对差中位数均显示 Triton 更快，约节省 9–27 µs/次 |
+| Eager decode forward | batch size 1 和 2 的中位数在两种运行顺序下均上升，约 +0.36 至 +1.23 ms |
+| CUDA Graph decode forward | 同样两种 batch size 的差距约 +10 至 +22 µs（0.1–0.3%），基本持平 |
+
+整模型结论限于这组 Qwen3-0.6B BF16 小 batch 工作负载，因此实验开关默认关闭。独立 CUDA 和 Triton 算子实现见 [MiniLLM-Kernels](https://github.com/zhiyuemouse/MiniLLM-Kernels)。
