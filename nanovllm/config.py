@@ -17,6 +17,7 @@ class Config:
     kvcache_block_size: int = 256
     num_kvcache_blocks: int = -1
     max_consecutive_prefills: int = 0
+    use_triton_post_attn_norm: bool = False
 
     def __post_init__(self):
         assert os.path.isdir(self.model)

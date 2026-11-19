@@ -206,6 +206,10 @@ def run_trial(llm, prompt_ids_by_label, sampling_params, arrival_plan_ms, trace)
     def trace_postprocess(seqs, token_ids, is_prefill):
         before_counts = {seq.seq_id: seq.num_tokens for seq in seqs}
 
+        if trace and is_prefill:
+            rows = sum(seq.num_scheduled_tokens for seq in seqs)
+            print(f"prefill rows={rows}")
+
         original_postprocess(seqs, token_ids, is_prefill)
         torch.cuda.synchronize()
         perf_counter = time.perf_counter()
@@ -599,13 +603,14 @@ def benchmark(args):
     }
 
     llm_kwargs = {
-        "enforce_eager": True,
+        "enforce_eager": not args.cuda_graph,
         "tensor_parallel_size": 1,
         "max_num_seqs": 2,
         "max_model_len": 128,
         "max_num_batched_tokens": 128,
         "gpu_memory_utilization": 0.70,
         "max_consecutive_prefills": args.max_consecutive_prefills,
+        "use_triton_post_attn_norm": args.use_triton_post_attn_norm,
     }
     sampling_params = SamplingParams(**sampling_kwargs)
 
@@ -638,15 +643,100 @@ def benchmark(args):
     }
     # 创建一次 LLM
     llm = LLM(model_path, **llm_kwargs)
+    forward_events = []
+
+    if args.measure_forward:
+        runner = llm.model_runner
+        original_run_model = runner.run_model
+
+        def timed_run_model(input_ids, positions, is_prefill):
+            phase = "prefill" if is_prefill else "decode"
+            rows = input_ids.size(0)
+            start = torch.cuda.Event(enable_timing=True)
+            stop = torch.cuda.Event(enable_timing=True)
+
+            start.record()
+            logits = original_run_model(input_ids, positions, is_prefill)
+            stop.record()
+
+            forward_events.append((phase, rows, start, stop))
+            return logits
+
+        runner.run_model = timed_run_model
+
     arrival_plan_ms = [(0, "A"), (10, "B"), (50, "C")]
     trial_fn = run_timed_trial if args.arrival_mode == "time" else run_trial
     # 运行 2 次 run_trial：执行全部校验，但丢弃测量结果
     for i in range(2):
         benchmark_output = trial_fn(llm, prompt_ids_by_label, sampling_params, arrival_plan_ms, trace=args.trace)
+    forward_events.clear()
+    forward_samples = []
+    ######################################################################################################################
+    if args.profile_decode is not None or args.profile_decode_nsys:
+        from torch.profiler import ProfilerActivity, profile, record_function
+
+        runner = llm.model_runner
+        original_run_model = runner.run_model
+        captured = False
+
+        def profile_one_decode(input_ids, positions, is_prefill):
+            nonlocal captured
+            if captured or is_prefill or input_ids.numel() != 1:
+                return original_run_model(input_ids, positions, is_prefill)
+
+            torch.cuda.synchronize()
+
+            if args.profile_decode_nsys:
+                torch.cuda.profiler.start()
+                try:
+                    logits = original_run_model(input_ids, positions, is_prefill)
+                    torch.cuda.synchronize()
+                finally:
+                    torch.cuda.profiler.stop()
+
+                captured = True
+                return logits
+
+            with profile(
+                activities=[ProfilerActivity.CPU, ProfilerActivity.CUDA],
+            ) as prof:
+                with record_function("decode_rows1_run_model"):
+                    logits = original_run_model(input_ids, positions, is_prefill)
+                torch.cuda.synchronize()
+
+            args.profile_decode.parent.mkdir(parents=True, exist_ok=True)
+            prof.export_chrome_trace(str(args.profile_decode))
+            captured = True
+            print(f"Saved decode trace to {args.profile_decode}")
+            return logits
+
+        runner.run_model = profile_one_decode
+        try:
+            trial_fn(
+                llm, prompt_ids_by_label, sampling_params, arrival_plan_ms,
+                trace=False,
+            )
+        finally:
+            runner.run_model = original_run_model
+
+        if not captured:
+            raise RuntimeError("本轮没有出现单行 decode")
+        return
+    ######################################################################################################################
     # 运行 5 次 run_trial：保存返回结果
     results = []
     for i in range(5):
         benchmark_output = trial_fn(llm, prompt_ids_by_label, sampling_params, arrival_plan_ms, trace=args.trace)
+        if forward_events:
+            forward_events[-1][3].synchronize()
+            for phase, rows, start, stop in forward_events:
+                forward_samples.append({
+                    "trial": i + 1,
+                    "phase": phase,
+                    "rows": rows,
+                    "forward_ms": start.elapsed_time(stop),
+                })
+            forward_events.clear()
         results.append(benchmark_output)
     assert len(results) == 5
     for result in results: # 检查最终保存的数据结构
@@ -667,6 +757,7 @@ def benchmark(args):
                     f"实际提交 {values['submitted_offset_ms']:.2f} ms | "
                     f"提交等待 {values['submission_delay_ms']:.2f} ms"
                 )
+            else: print()
     output_path = Path(args.output)
     output_path.parent.mkdir(parents=True, exist_ok=True)
 
@@ -692,6 +783,7 @@ def benchmark(args):
         "arrival_mode": args.arrival_mode,
         "arrival_plan_ms": arrival_plan_ms,
         "trace": args.trace,
+        "forward_samples": forward_samples
     }
     save_benchmark_result(output_path, metadata, results)
 
@@ -703,6 +795,11 @@ if __name__ == "__main__":
     parser.add_argument("--output", type=str, required=True)
     parser.add_argument("--arrival-mode", choices=("step", "time"), default="step")
     parser.add_argument("--trace", action="store_true")
+    parser.add_argument("--use-triton-post-attn-norm", action="store_true")
+    parser.add_argument("--measure-forward", action="store_true")
+    parser.add_argument("--profile-decode", type=Path)
+    parser.add_argument("--profile-decode-nsys", action="store_true")
+    parser.add_argument("--cuda-graph", action="store_true")
     args = parser.parse_args()
     # test_request_timing()
     # test_token_timing_gpu(args)

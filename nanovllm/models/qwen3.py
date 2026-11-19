@@ -9,6 +9,7 @@ from nanovllm.layers.layernorm import RMSNorm
 from nanovllm.layers.linear import QKVParallelLinear, MergedColumnParallelLinear, RowParallelLinear
 from nanovllm.layers.rotary_embedding import get_rope
 from nanovllm.layers.embed_head import VocabParallelEmbedding, ParallelLMHead
+from nanovllm.layers.triton_rms_norm import fused_add_rms_norm
 
 
 class Qwen3Attention(nn.Module):
@@ -122,6 +123,7 @@ class Qwen3DecoderLayer(nn.Module):
     def __init__(
         self,
         config: Qwen3Config,
+        use_triton_post_attn_norm: bool = False,
     ) -> None:
         super().__init__()
         self.self_attn = Qwen3Attention(
@@ -142,19 +144,47 @@ class Qwen3DecoderLayer(nn.Module):
         )
         self.input_layernorm = RMSNorm(config.hidden_size, eps=config.rms_norm_eps)
         self.post_attention_layernorm = RMSNorm(config.hidden_size, eps=config.rms_norm_eps)
+        self.use_triton_post_attn_norm = use_triton_post_attn_norm
 
     def forward(
         self,
         positions: torch.Tensor,
         hidden_states: torch.Tensor,
         residual: torch.Tensor | None,
+        
     ) -> tuple[torch.Tensor, torch.Tensor]:
         if residual is None:
             hidden_states, residual = self.input_layernorm(hidden_states), hidden_states
         else:
             hidden_states, residual = self.input_layernorm(hidden_states, residual)
+        # print(f"after RMSNorm | hidden_states shape: {hidden_states.shape}, residual shape: {residual.shape}, dtype: {hidden_states.dtype}, eps: {self.input_layernorm.eps}")
         hidden_states = self.self_attn(positions, hidden_states)
-        hidden_states, residual = self.post_attention_layernorm(hidden_states, residual)
+        norm = self.post_attention_layernorm
+        weight = norm.weight
+
+        can_use_triton = (
+            self.use_triton_post_attn_norm
+            and residual is not None
+            and hidden_states.ndim == 2
+            and hidden_states.numel() > 0
+            and residual.shape == hidden_states.shape
+            and weight.shape == (hidden_states.shape[1],)
+            and hidden_states.is_cuda
+            and hidden_states.device == residual.device == weight.device
+            and hidden_states.dtype == residual.dtype == weight.dtype == torch.bfloat16
+            and hidden_states.is_contiguous()
+            and residual.is_contiguous()
+            and weight.is_contiguous()
+        )
+        if can_use_triton:
+            hidden_states, residual = fused_add_rms_norm(
+                res=residual,
+                x=hidden_states,
+                weight=weight,
+                eps=norm.eps,
+            )
+        else:
+            hidden_states, residual = norm(hidden_states, residual)
         hidden_states = self.mlp(hidden_states)
         return hidden_states, residual
 
@@ -164,10 +194,11 @@ class Qwen3Model(nn.Module):
     def __init__(
         self,
         config: Qwen3Config,
+        use_triton_post_attn_norm: bool = False,
     ) -> None:
         super().__init__()
         self.embed_tokens = VocabParallelEmbedding(config.vocab_size, config.hidden_size)
-        self.layers = nn.ModuleList([Qwen3DecoderLayer(config) for _ in range(config.num_hidden_layers)])
+        self.layers = nn.ModuleList([Qwen3DecoderLayer(config, use_triton_post_attn_norm=use_triton_post_attn_norm) for _ in range(config.num_hidden_layers)])
         self.norm = RMSNorm(config.hidden_size, eps=config.rms_norm_eps)
 
     def forward(
@@ -194,10 +225,11 @@ class Qwen3ForCausalLM(nn.Module):
 
     def __init__(
         self,
-        config: Qwen3Config
+        config: Qwen3Config,
+        use_triton_post_attn_norm: bool = False,
     ) -> None:
         super().__init__()
-        self.model = Qwen3Model(config)
+        self.model = Qwen3Model(config, use_triton_post_attn_norm=use_triton_post_attn_norm)
         self.lm_head = ParallelLMHead(config.vocab_size, config.hidden_size)
         if config.tie_word_embeddings:
             self.lm_head.weight.data = self.model.embed_tokens.weight.data
